@@ -1,0 +1,28 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: containerlogs
+          __path__: /var/lib/docker/containers/*/*log # Path to all container logs
+
+    pipeline_stages:
+      - docker: {} # Extracts labels from Docker daemon
+      - labelmap:
+          # Remap Docker's default labels to something more readable in Grafana
+          regex: __meta_docker_container_label_(.+)
+      - match:
+          # Only process logs that don't have the 'grafana_job' label (to avoid Promtail logging itself)
+          selector: '{grafana_job=""}'
+          action: drop
