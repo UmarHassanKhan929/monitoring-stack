@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="280" viewBox="0 0 820 280" role="img" aria-label="Monitoring stack architecture">
+  <rect width="820" height="280" fill="#0f1419"/>
+  <text x="410" y="36" text-anchor="middle" fill="#e6edf3" font-family="system-ui,sans-serif" font-size="20" font-weight="600">monitoring-stack</text>
+  <text x="410" y="58" text-anchor="middle" fill="#8b949e" font-family="system-ui,sans-serif" font-size="13">Docker Compose · metrics, logs, dashboards</text>
+  <rect x="40" y="95" width="140" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+  <text x="110" y="130" text-anchor="middle" fill="#58a6ff" font-family="system-ui,sans-serif" font-size="14">Your apps</text>
+  <rect x="220" y="95" width="130" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+  <text x="285" y="130" text-anchor="middle" fill="#79c0ff" font-family="system-ui,sans-serif" font-size="14">Prometheus</text>
+  <rect x="390" y="95" width="110" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+  <text x="445" y="130" text-anchor="middle" fill="#a371f7" font-family="system-ui,sans-serif" font-size="14">Loki</text>
+  <rect x="530" y="95" width="120" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+  <text x="590" y="130" text-anchor="middle" fill="#ffa657" font-family="system-ui,sans-serif" font-size="14">Promtail</text>
+  <rect x="680" y="95" width="100" height="56" rx="8" fill="#21262d" stroke="#30363d"/>
+  <text x="730" y="130" text-anchor="middle" fill="#ff7b72" font-family="system-ui,sans-serif" font-size="14">Grafana</text>
+  <path d="M180 123 L220 123" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M350 123 L390 123" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M500 123 L530 123" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M650 123 L680 123" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <path d="M445 151 L445 175 L730 175 L730 151" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M285 151 L285 175 L730 175" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="410" y="200" text-anchor="middle" fill="#8b949e" font-family="system-ui,sans-serif" font-size="12">scrape /metrics · push logs · query &amp; alert in Grafana</text>
+  <rect x="40" y="215" width="740" height="44" rx="6" fill="#161b22" stroke="#30363d"/>
+  <text x="410" y="243" text-anchor="middle" fill="#7ee787" font-family="ui-monospace,monospace" font-size="12">docker compose up -d</text>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#8b949e"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,15 @@
+# Local secrets (copy from .env.example)
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Optional local overrides
+docker-compose.override.yml

@@ -1,0 +1,40 @@
+name: Validate Compose
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  compose-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compose file is valid
+        run: docker compose config >/dev/null
+
+      - name: Start stack (Linux smoke)
+        run: docker compose up -d
+
+      - name: Wait for Prometheus, Loki, Grafana HTTP
+        shell: bash
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:9090/-/ready" >/dev/null \
+              && curl -sf "http://localhost:3100/ready" >/dev/null \
+              && curl -sf "http://localhost:3000/api/health" >/dev/null; then
+              echo "All core endpoints ready."
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Timeout waiting for services."
+          docker compose ps
+          exit 1
+
+      - name: Stop stack and remove volumes
+        if: always()
+        run: docker compose down -v --remove-orphans

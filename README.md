@@ -1,27 +1,125 @@
-## Monitoring Stack (Prometheus, Grafana, Loki, Promtail, Node Exporter)
+# monitoring-stack
 
-This repository provides a ready-to-run observability stack using Docker Compose:
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 
-- Prometheus for metrics collection
-- Grafana for visualization
-- Loki for log aggregation
-- Promtail to ship container logs to Loki
-- Node Exporter for host metrics
+**Clone, set credentials, run one command** — get Prometheus metrics, Loki logs, and Grafana dashboards on your own backend server (or dev machine).
 
-All services are pre-wired with sane defaults, provisioning, and volumes for persistence.
+![Stack overview](docs/images/architecture-preview.svg)
 
-### Components and Ports
+| Goal | What this repo gives you |
+|------|---------------------------|
+| Host and stack visibility | Node Exporter + Prometheus + pre-provisioned Grafana dashboard |
+| Container logs in Grafana | Promtail → Loki → Grafana Explore |
+| Your app’s metrics | Add a scrape job in `prometheus/prometheus.yml` |
+| Your app’s logs | Stdout in Docker, or push to Loki from the host |
 
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 (username: `admin`, password: `admin`)
-- Loki (API): http://localhost:3100
-- Promtail: http://localhost:9080 (metrics)
-- Node Exporter: http://localhost:9100/metrics
+---
 
-### Repository Layout
+## What you get
+
+- **Prometheus** — scrape metrics (defaults in [prometheus/prometheus.yml](prometheus/prometheus.yml))
+- **Grafana** — dashboards; datasources for Prometheus and Loki are **auto-provisioned**
+- **Loki** — log store
+- **Promtail** — ships Docker container logs to Loki
+- **Node Exporter** — host CPU, memory, disk, and related metrics
+- **Persistence** — Docker volumes for Prometheus, Grafana, and Loki data
+
+### Architecture
+
+```mermaid
+flowchart LR
+  subgraph apps [Your workloads]
+    Backend[BackendServices]
+  end
+  subgraph metrics [Metrics]
+    Prometheus[Prometheus]
+    NodeExporter[NodeExporter]
+  end
+  subgraph logs [Logs]
+    Promtail[Promtail]
+    Loki[Loki]
+  end
+  Grafana[Grafana]
+  Backend -->|scrape_/metrics| Prometheus
+  NodeExporter --> Prometheus
+  Promtail --> Loki
+  Backend -->|stdout_in_containers| Promtail
+  Prometheus --> Grafana
+  Loki --> Grafana
+```
+
+---
+
+## Requirements
+
+- **Recommended:** Linux **x86_64** or **arm64** server with [Docker Engine](https://docs.docker.com/engine/install/) and the [Compose plugin](https://docs.docker.com/compose/install/linux/). This matches real backend deployments and the volume paths used by Node Exporter and Promtail.
+- **Docker Desktop (Windows/macOS):** fine for trying the stack. **Node Exporter** reports the **Linux VM** used by Docker, not your physical Windows or Mac hardware. **Promtail** usually still collects **container** logs. Use `host.docker.internal` from Prometheus to reach apps on the host where applicable.
+
+---
+
+## Quick start
+
+1. Clone the repository.
+
+2. (Optional but recommended) Copy environment defaults and edit secrets:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Set `GF_SECURITY_ADMIN_PASSWORD` (and optionally ports) in `.env`. Docker Compose reads `.env` automatically for variable substitution.
+
+3. Start everything:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Open the UIs (defaults shown; override with variables in `.env`):
+
+   | Service | URL (defaults) |
+   |---------|----------------|
+   | Grafana | http://localhost:3000 |
+   | Prometheus | http://localhost:9090 |
+   | Loki | http://localhost:3100 |
+   | Node Exporter metrics | http://localhost:9100/metrics |
+   | Promtail metrics | http://localhost:9080/metrics |
+
+   Grafana login: values of `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` (default `admin` / `admin`).
+
+5. **Sanity checks** (defaults ports; replace if you changed `.env`):
+
+   ```bash
+   curl -sf http://localhost:9090/-/ready
+   curl -sf http://localhost:3100/ready
+   curl -sf http://localhost:3000/api/health
+   ```
+
+To stop:
+
+```bash
+docker compose down
+```
+
+Data is kept in Docker volumes (`prometheus_data`, `grafana_data`, `loki_data`).
+
+### Configuration
+
+See [.env.example](.env.example) for:
+
+- `GF_SECURITY_ADMIN_USER`, `GF_SECURITY_ADMIN_PASSWORD`
+- `PROMETHEUS_PORT`, `GRAFANA_PORT`, `LOKI_PORT`, `NODE_EXPORTER_PORT`, `PROMTAIL_METRICS_PORT`
+
+If you change published ports, use those values in URLs and in app integrations (for example Loki push URLs).
+
+---
+
+## Repository layout
 
 ```
 docker-compose.yml
+.env.example
 grafana/
   dashboards/
     node-exporter-full.json
@@ -32,48 +130,45 @@ prometheus/
   prometheus.yml
 promtail/
   promtail-config.yml
+docs/
+  github-repo-metadata.md   # copy-paste for GitHub About / topics
+  images/
+    architecture-preview.svg
 ```
 
-Grafana is auto-provisioned with:
-- A Prometheus data source at `http://prometheus:9090`
-- A Loki data source at `http://loki:3100`
-- Any JSON dashboards placed in `grafana/dashboards` (e.g., `node-exporter-full.json`)
+Grafana is provisioned with:
+
+- Prometheus at `http://prometheus:9090`
+- Loki at `http://loki:3100`
+- JSON dashboards in `grafana/dashboards/`
 
 ---
 
-## Quick Start
+## Verifying on a Linux server
 
-Prerequisites: Docker Desktop (Windows/macOS) or Docker Engine + Compose.
+After `docker compose up -d` on Linux:
 
-```bash
-docker compose up -d
-```
+1. **Grafana** — http://localhost:3000 (or your `GRAFANA_PORT`) → **Connections → Data sources** → health check green for Prometheus and Loki.
+2. **Dashboards** — open the provisioned Node Exporter dashboard; CPU/memory panels should populate within a scrape interval or two.
+3. **Loki** — **Explore** → Loki → `{job="containerlogs"}` (or your labels) to see Docker container logs.
+4. **Promtail** — needs read access to Docker’s API and container log files. On Linux, the Docker socket is mounted from the host; the user inside the Promtail image must be able to use it (typical Docker installs work). If Promtail logs show permission errors, ensure your Docker daemon socket permissions match your environment (often `docker` group membership on the **host** for the user running Compose).
 
-Then open:
-- Grafana: http://localhost:3000 (admin/admin)
-- Prometheus: http://localhost:9090
-
-To stop:
-
-```bash
-docker compose down
-```
-
-Data is persisted in Docker volumes (`prometheus_data`, `grafana_data`, `loki_data`).
+The [GitHub Actions workflow](.github/workflows/compose-validate.yml) runs on **ubuntu-latest**: it validates `docker compose config`, brings the stack up, waits for Prometheus, Loki, and Grafana HTTP endpoints, then tears everything down (including volumes) so forks get a basic Linux regression check on every push and pull request.
 
 ---
 
-## Integrating Your Backend (Python, Node.js, Go)
+## Integrating your backend (Python, Node.js, Go)
 
 There are two parts to integrate:
-1) Expose metrics for Prometheus to scrape
-2) Ship logs to Loki (via Promtail or directly)
 
-On Windows with Docker Desktop, use `host.docker.internal` for Prometheus to reach apps running on your host. If your app runs as a container on the same Compose network, use the container service name instead.
+1. Expose metrics for Prometheus to scrape  
+2. Ship logs to Loki (via Promtail or directly)
 
-### 1) Expose Metrics for Prometheus
+On Windows or macOS with Docker Desktop, use `host.docker.internal` for Prometheus to reach apps running on your host. If your app runs as a container on the same Compose network, use the **service name** and port instead.
 
-Update `prometheus/prometheus.yml` to add a job for your app and point it at your metrics endpoint. Example for an app running on your host on port 8000:
+### 1) Expose metrics for Prometheus
+
+Update [prometheus/prometheus.yml](prometheus/prometheus.yml) to add a job for your app. Example for an app on the host listening on port 8000:
 
 ```yaml
 # prometheus/prometheus.yml
@@ -160,19 +255,19 @@ func main() {
 }
 ```
 
-After your app exposes metrics, add the job in `prometheus/prometheus.yml` (as above), then restart Prometheus:
+After your app exposes metrics, add the job in `prometheus/prometheus.yml`, then restart Prometheus:
 
 ```bash
 docker compose restart prometheus
 ```
 
-In Grafana, import/create dashboards and select the "Prometheus" data source.
+In Grafana, import or create dashboards and select the **Prometheus** data source.
 
 ---
 
-### 2) Ship Logs to Loki
+### 2) Ship logs to Loki
 
-This stack already ships Docker container logs via Promtail using:
+This stack ships Docker container logs via Promtail using:
 
 ```yaml
 # promtail/promtail-config.yml
@@ -194,12 +289,12 @@ scrape_configs:
           action: drop
 ```
 
-So if your backend runs as a container in the same Docker Engine, logging to stdout/stderr is enough. Promtail will forward those logs to Loki, and you can query them in Grafana using the "Loki" data source.
+If your backend runs as a container on the same Docker Engine, logging to **stdout/stderr** is enough. Promtail forwards those logs to Loki; query them in Grafana with the **Loki** data source.
 
-If your backend runs on the host (outside Docker), you have two options:
+If your backend runs on the host (outside Docker), you can:
 
-- Run a local Promtail to tail your app's log files and push to `http://localhost:3100`
-- Use a Loki client library and push logs directly to `http://localhost:3100/loki/api/v1/push`
+- Run Promtail (or another agent) to tail log files and push to `http://localhost:${LOKI_PORT:-3100}`, or  
+- Use a Loki client library and push to `http://localhost:${LOKI_PORT:-3100}/loki/api/v1/push`
 
 #### Python logging to Loki (direct)
 
@@ -223,8 +318,6 @@ logger.info("hello from python")
 ```
 
 #### Node.js logging to Loki (direct)
-
-Winston example:
 
 ```bash
 npm i winston winston-loki
@@ -273,45 +366,66 @@ func main() {
 
 ---
 
-## Common Tasks
+## Production checklist
 
-- Restart a single service:
+- [ ] Set strong `GF_SECURITY_ADMIN_PASSWORD` in `.env` (never commit `.env`).
+- [ ] Do not expose Grafana, Prometheus, or Loki to the public internet without **TLS** and **authentication** at the edge (reverse proxy, VPN, or cloud load balancer rules).
+- [ ] Restrict firewall rules to admin IPs or internal networks.
+- [ ] Plan **retention**: Prometheus and Loki defaults are suitable for demos; tune TSDB and Loki retention for your disk budget (see upstream docs for `prometheus` and `loki` flags when you outgrow defaults).
+
+---
+
+## Common tasks
+
+Restart a single service:
 
 ```bash
 docker compose restart grafana
 ```
 
-- View logs for a service:
+View logs for a service:
 
 ```bash
 docker compose logs -f promtail
 ```
 
-- Add another dashboard: drop a JSON file into `grafana/dashboards/` and refresh Grafana.
+Add another dashboard: drop a JSON file into `grafana/dashboards/` and refresh Grafana.
 
 ---
 
 ## Troubleshooting
 
-- No metrics from your app:
-  - Verify your app exposes `/metrics` locally
-  - Ensure `prometheus/prometheus.yml` has a job pointing to `host.docker.internal:PORT` (Windows/macOS) or the correct container service name
-  - Restart Prometheus after changing the config
+- **No metrics from your app**  
+  - Confirm `/metrics` responds on the host or container.  
+  - Ensure `prometheus/prometheus.yml` targets `host.docker.internal:PORT` (Desktop) or the correct service name.  
+  - `docker compose restart prometheus` after edits.
 
-- No logs from your app:
-  - If containerized, ensure it writes to stdout/stderr
-  - If on host, either tail files with a Promtail agent or use a Loki client library
-  - Check Promtail logs: `docker compose logs -f promtail`
+- **No logs from your app**  
+  - Containerized apps should log to stdout/stderr.  
+  - On the host, use Promtail tailing files or a Loki client (see above).  
+  - Check `docker compose logs -f promtail`.
 
-- Grafana empty panels:
-  - Confirm the correct data source is selected (Prometheus or Loki)
-  - Check data source health under Grafana > Connections > Data sources
+- **Grafana empty panels**  
+  - Pick the correct datasource (Prometheus vs Loki).  
+  - **Connections → Data sources** → **Save & test**.
+
+- **Promtail permission errors on Linux**  
+  - Ensure Docker socket and container log paths are accessible to the Promtail container; see [Verifying on a Linux server](#verifying-on-a-linux-server).
 
 ---
 
-## Security Notes
+## Security
 
-- Grafana admin credentials are set via environment variables in `docker-compose.yml` and default to `admin/admin`. Change them in production.
-- Consider network/ingress controls and TLS for external exposure.
+- Default Grafana credentials are for **local demos only**. Change them via `.env` before any non-local use. See [SECURITY.md](SECURITY.md) for reporting issues.
 
+---
 
+## Contributing and license
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under the [MIT License](LICENSE).
+
+---
+
+## GitHub profile pin
+
+Copy suggested **description** and **topics** from [docs/github-repo-metadata.md](docs/github-repo-metadata.md) into your repository **About** settings, then pin the repo on your profile.
