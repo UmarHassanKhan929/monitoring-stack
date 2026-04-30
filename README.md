@@ -423,9 +423,3 @@ Add another dashboard: drop a JSON file into `grafana/dashboards/` and refresh G
 ## Contributing and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under the [MIT License](LICENSE).
-
----
-
-## GitHub profile pin
-
-Copy suggested **description** and **topics** from [docs/github-repo-metadata.md](docs/github-repo-metadata.md) into your repository **About** settings, then pin the repo on your profile.
