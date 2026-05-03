@@ -5,8 +5,6 @@
 
 **Clone, set credentials, run one command** — get Prometheus metrics, Loki logs, and Grafana dashboards on your own backend server (or dev machine).
 
-![Stack overview](docs/images/architecture-preview.svg)
-
 | Goal | What this repo gives you |
 |------|---------------------------|
 | Host and stack visibility | Node Exporter + Prometheus + pre-provisioned Grafana dashboard |
